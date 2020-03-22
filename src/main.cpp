@@ -1,6 +1,7 @@
 #include <fakes.h> // remove
 
 #include <Arduino.h>
+#include <Servo.h>
 
 #include <WiFi.h>
 #include <WiFiType.h>
@@ -43,7 +44,6 @@ extern "C"
 #define LOW 0x1
 #undef HIGH
 #define HIGH 0x0
-
 
 const int BaudRate = 115200;
 
@@ -279,7 +279,9 @@ void setup() {
   connectToWifi();
 }
 
+auto led_state = LOW;
 void loop() {
-  delay(1000);
-  digitalWrite(LED_BUILTIN, LOW);
+  led_state = !led_state;
+  delay(led_state==HIGH ? 1000 : 10000);
+  digitalWrite(LED_BUILTIN, led_state);
 }
