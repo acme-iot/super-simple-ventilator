@@ -1,0 +1,15 @@
+language: python
+python:
+    - "3.8"
+
+sudo: false
+cache:
+    directories:
+        - "~/.platformio"
+
+install:
+    - pip3 install -U platformio
+    - pio update
+
+script:
+    - pio run -e ventilator-ci
