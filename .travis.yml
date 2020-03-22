@@ -8,7 +8,7 @@ cache:
         - "~/.platformio"
 
 install:
-    - pip3 install -U platformio
+    - pip3 install -U https://github.com/platformio/platformio-core/archive/develop.zip
     - pio update
 
 script:
