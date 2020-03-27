@@ -1,5 +1,11 @@
 #include <fakes.h> // remove
 
+extern "C"
+{
+#include "freertos/FreeRTOS.h"
+#include "freertos/timers.h"
+}
+
 #include <Arduino.h>
 #include <Servo.h>
 
@@ -24,12 +30,6 @@
 #define SECRET_MQTT_PASSWORD ""
 #endif
 
-extern "C"
-{
-#include "freertos/FreeRTOS.h"
-#include "freertos/timers.h"
-}
-
 #include <ArduinoLog.h>
 
 #ifdef RELEASE
@@ -40,10 +40,37 @@ extern "C"
 #define HACK_MODE true
 #endif
 
-#undef LOW
-#define LOW 0x1
-#undef HIGH
-#define HIGH 0x0
+//some variables to tweek
+#define version "20201603.1"
+#define rate 16 // breathing cycles per minute
+#define enable_motor true // useful for debugging without noise
+
+#define max_speed 180
+#define min_speed 0
+#define PEEP_speed 40 //approx 5cm/H2O
+#define led_pin 13
+#define button_pin A5
+#define current_pin A0
+#define servo_pin 3
+#define serial_baud 9600
+
+int buttonState = 1;
+int buttonStatePrev = 1;
+int speed_state = 0;
+int loop_count = 0;
+int click_loop_count = 0;
+int click_count = 0;
+
+int target_speed_high = 0;
+int target_speed_low = 0;
+
+int cycle_counter = 0;
+int cycle_phase = 0;
+int mode = 0;
+int current = 0;
+
+const uint8_t ServoPin = A4;
+Servo servo;
 
 const int BaudRate = 115200;
 
@@ -55,19 +82,21 @@ aquabotics::FileSystem fileSystem{};
 
 // Timers
 TimerHandle_t wifiReconnectTimer;
-TimerHandle_t timeTimer;
-TimerHandle_t configurationTimer;
+TimerHandle_t initializeBlowerTimer;
 
 void connectToWifi() {
   Log.trace("connecting to Wi-Fi...");
   WiFi.begin(ssid, password);
 }
 
+void initializeBlower() {
+  Log.trace("initializing blower....");
+
+}
+
 void preInitialize() {
-  // assert all that is required
   assert(Serial);
 
-  // init Serial
   Serial.begin(BaudRate);
   while (!Serial && !Serial.available()) {
   }
@@ -120,6 +149,11 @@ void setupWiFi() {
       case SYSTEM_EVENT_STA_GOT_IP: {
         Log.trace("wifi connected, %s", WiFi.localIP().toString().c_str());
         // connect/expose services
+        initializeBlowerTimer = xTimerCreate("blowerTimer",
+                                             pdMS_TO_TICKS(1*1000),
+                                             pdFALSE,
+                                             (void *) 0,
+                                             reinterpret_cast<TimerCallbackFunction_t >(initializeBlower));
         break;
       }
       case SYSTEM_EVENT_STA_DISCONNECTED: {
@@ -243,7 +277,10 @@ void setupWiFi() {
   }
 
   connectToWifi();
+}
 
+void setupServo() {
+  pinMode(ServoPin, OUTPUT);
 }
 
 void setup() {
@@ -252,6 +289,7 @@ void setup() {
   setupLogging();
   setupFileSystem();
   setupWiFi();
+  setupServo();
 
   Log.notice("Running...");
 
@@ -282,6 +320,11 @@ void setup() {
 auto led_state = LOW;
 void loop() {
   led_state = !led_state;
-  delay(led_state==HIGH ? 1000 : 10000);
+
+  digitalWrite(ServoPin, HIGH);
+  delay(led_state==HIGH ? 6000 : 6000);
+  digitalWrite(ServoPin, LOW);
+  delay(3000);
+
   digitalWrite(LED_BUILTIN, led_state);
 }
