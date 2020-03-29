@@ -1,25 +1,18 @@
-#include <fakes.h> // remove
-
-extern "C"
-{
-#include "freertos/FreeRTOS.h"
-#include "freertos/timers.h"
-}
-
 #include <Arduino.h>
-#include <Servo.h>
 
-#include <WiFi.h>
-#include <WiFiType.h>
+#include <ArduinoLog.h>
 #include <TimeLib.h>
+
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <DNSServer.h>
+#include <WiFiManager.h>
+#include "SSD1306Wire.h"
 
 #include <chrono>
 #include <ctime>
 #include <string>
-#include <cassert>
-
-#include <FileSystem.h>
-#include <Configuration.h>
+//#include <cassert>
 
 #ifndef CI_BUILD
 #include "secrets.h"
@@ -29,8 +22,6 @@ extern "C"
 #define SECRET_MQTT_USERNAME ""
 #define SECRET_MQTT_PASSWORD ""
 #endif
-
-#include <ArduinoLog.h>
 
 #ifdef RELEASE
 #define LOG_LEVEL LOG_LEVEL_SILENT
@@ -42,7 +33,7 @@ extern "C"
 
 //some variables to tweek
 #define version "20201603.1"
-#define rate 16 // breathing cycles per minute
+//#define normailizedRate 16 // breathing cycles per minute
 #define enable_motor true // useful for debugging without noise
 
 #define max_speed 180
@@ -57,49 +48,111 @@ extern "C"
 int buttonState = 1;
 int buttonStatePrev = 1;
 int speed_state = 0;
-int loop_count = 0;
 int click_loop_count = 0;
 int click_count = 0;
 
 int target_speed_high = 0;
 int target_speed_low = 0;
 
-int cycle_counter = 0;
-int cycle_phase = 0;
 int mode = 0;
 int current = 0;
 
-const uint8_t ServoPin = A4;
-Servo servo;
+const String Version = "0.0.1";
+const String AccessPointSSID = "iot-ap";
+
+const uint8_t PotPin = A0;
+const uint8_t ControllerPin = D5;
+const uint8_t FlashPin = 0;
+
+const uint8_t CycleLow = 13;
+const uint8_t CycleHigh = 20;
 
 const int BaudRate = 115200;
 
 const char *ssid = SECRET_SSID;
 const char *password = SECRET_PASSWORD;
 
-aquabotics::Configuration configuration{};
-aquabotics::FileSystem fileSystem{};
+const int LineHeight = 16;
 
-// Timers
-TimerHandle_t wifiReconnectTimer;
-TimerHandle_t initializeBlowerTimer;
+SSD1306Wire display(0x3c, SDA, SCL);
 
-void connectToWifi() {
+WiFiManager wifiManager;
+
+int loop_count = 0;
+int cycle_counter = 0;
+int cycle_phase = 0;
+
+int line = LineHeight;
+bool overwrite = false;
+
+/*void connectToWifi() {
   Log.trace("connecting to Wi-Fi...");
-  WiFi.begin(ssid, password);
 }
 
 void initializeBlower() {
   Log.trace("initializing blower....");
 
 }
+*/
+
+//helper method for oLed
+//pout -> Print Out
+void pout(String msg) {
+  if (overwrite==true) {
+    display.setColor(BLACK);
+    display.fillRect(0, line, 128, 64);
+    display.setColor(WHITE);
+    display.drawString(0, line, msg);
+    display.display();
+    line += LineHeight;
+  } else {
+    display.drawString(0, line, msg);
+    display.display();
+    line += LineHeight;
+  }
+
+  if (line>=LineHeight*3) {
+    overwrite = true;
+    line = LineHeight * 2;
+  }
+}
+
+void wifiManagerApCallback(WiFiManager *manager) {
+  const String ssid = manager->getConfigPortalSSID();
+  Log.trace("config mode: IP %s\nSSIF %s",
+            WiFi.softAPIP().toString().c_str(),
+            ssid.c_str()
+  );
+  pout("Connected to WiFi");
+  pout("  " + ssid);
+  //digitalWrite(LED_BUILTIN, LOW);
+  delay(2000);
+}
 
 void preInitialize() {
-  assert(Serial);
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(FlashPin, INPUT);
+  pinMode(PotPin, INPUT);
+  pinMode(ControllerPin, OUTPUT);
+
+  // Quickly kill motor
+  digitalWrite(ControllerPin, LOW);
 
   Serial.begin(BaudRate);
   while (!Serial && !Serial.available()) {
   }
+}
+
+void printBoardInfo() {
+  Log.verbose("ESP INFO");
+  Log.verbose("\tVoltage:\t%d", ESP.getVcc());
+  Log.verbose("\tBootMode:\t%d", ESP.getBootMode());
+  Log.verbose("\tBootVersion:\t%d", ESP.getBootVersion());
+  Log.verbose("\tChipId:\t%d", ESP.getChipId());
+  Log.verbose("\tCoreVersion:\t%s", ESP.getCoreVersion().c_str());
+  Log.verbose("\tCpuFrequencyMHz:\t%d", ESP.getCpuFreqMHz());
+  Log.verbose("\tFullVersion:\t%s", ESP.getFullVersion().c_str());
+  Log.verbose("\tResetReason:\t%s", ESP.getResetReason().c_str());
 }
 
 void setupDebugging() {
@@ -122,209 +175,93 @@ void setupLogging() {
   Log.setSuffix([](Print *p) { p->print("\n"); });
 }
 
-void setupFileSystem() {
-  Log.trace("setting up file system");
-  fileSystem.begin();
-
-  Log.trace("setting up configuration");
-  configuration.begin();
-
-  //Log.trace("starting refresh configuration timer");
-  /*configurationTimer = xTimerCreate("configurationTimer",
-                                    pdMS_TO_TICKS(10*1000),
-                                    pdFALSE,
-                                    (void *) 0,
-                                    reinterpret_cast<TimerCallbackFunction_t>(requestGatewayConfiguration));*/
-
-  /*if (xTimerStart(configurationTimer, 0)!=pdPASS) {
-    Log.fatal("Configuration timer failed.");
-  }*/
-}
-
 void setupWiFi() {
-
-  auto handleEvents = [](WiFiEvent_t event) {
-    Log.trace("[WiFi-event] event: %d", event);
-    switch (event) {
-      case SYSTEM_EVENT_STA_GOT_IP: {
-        Log.trace("wifi connected, %s", WiFi.localIP().toString().c_str());
-        // connect/expose services
-        initializeBlowerTimer = xTimerCreate("blowerTimer",
-                                             pdMS_TO_TICKS(1*1000),
-                                             pdFALSE,
-                                             (void *) 0,
-                                             reinterpret_cast<TimerCallbackFunction_t >(initializeBlower));
-        break;
-      }
-      case SYSTEM_EVENT_STA_DISCONNECTED: {
-        Log.error("WiFi lost connection");
-        xTimerStart(wifiReconnectTimer, 0);
-        break;
-      }
-      case SYSTEM_EVENT_WIFI_READY: {
-        Log.trace("SYSTEM_EVENT_WIFI_READY");
-        break;
-      }
-      case SYSTEM_EVENT_SCAN_DONE: {
-        Log.trace("SYSTEM_EVENT_SCAN_DONE");
-        break;
-      }
-      case SYSTEM_EVENT_STA_START: {
-        Log.trace("SYSTEM_EVENT_STA_START");
-        break;
-      }
-      case SYSTEM_EVENT_STA_STOP: {
-        Log.trace("SYSTEM_EVENT_STA_STOP");
-        break;
-      }
-      case SYSTEM_EVENT_STA_CONNECTED: {
-        Log.trace("SYSTEM_EVENT_STA_CONNECTED");
-        break;
-      }
-      case SYSTEM_EVENT_STA_AUTHMODE_CHANGE: {
-        Log.trace("SYSTEM_EVENT_STA_AUTHMODE_CHANGE");
-        break;
-      }
-      case SYSTEM_EVENT_STA_LOST_IP: {
-        Log.trace("SYSTEM_EVENT_STA_LOST_IP");
-        break;
-      }
-      case SYSTEM_EVENT_STA_WPS_ER_SUCCESS: {
-        Log.trace("SYSTEM_EVENT_STA_WPS_ER_SUCCESS");
-        break;
-      }
-      case SYSTEM_EVENT_STA_WPS_ER_FAILED: {
-        Log.trace("SYSTEM_EVENT_STA_WPS_ER_FAILED");
-        break;
-      }
-      case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT: {
-        Log.trace("SYSTEM_EVENT_STA_WPS_ER_TIMEOUT");
-        break;
-      }
-      case SYSTEM_EVENT_STA_WPS_ER_PIN: {
-        Log.trace("SYSTEM_EVENT_STA_WPS_ER_PIN");
-        break;
-      }
-      case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP: {
-        Log.trace("SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP");
-        break;
-      }
-      case SYSTEM_EVENT_AP_START: {
-        Log.trace("SYSTEM_EVENT_AP_START");
-        break;
-      }
-      case SYSTEM_EVENT_AP_STOP: {
-        Log.trace("SYSTEM_EVENT_WIFI_READY");
-        break;
-      }
-      case SYSTEM_EVENT_AP_STACONNECTED: {
-        Log.trace("SYSTEM_EVENT_AP_STACONNECTED");
-        break;
-      }
-      case SYSTEM_EVENT_AP_STADISCONNECTED: {
-        Log.trace("SYSTEM_EVENT_AP_STADISCONNECTED");
-        break;
-      }
-      case SYSTEM_EVENT_AP_STAIPASSIGNED: {
-        Log.trace("SYSTEM_EVENT_AP_STAIPASSIGNED");
-        break;
-      }
-      case SYSTEM_EVENT_AP_PROBEREQRECVED: {
-        Log.trace("SYSTEM_EVENT_AP_PROBEREQRECVED");
-        break;
-      }
-      case SYSTEM_EVENT_GOT_IP6: {
-        Log.trace("SYSTEM_EVENT_GOT_IP6");
-        break;
-      }
-      case SYSTEM_EVENT_ETH_START:
-      case SYSTEM_EVENT_ETH_STOP:
-      case SYSTEM_EVENT_ETH_CONNECTED:
-      case SYSTEM_EVENT_ETH_DISCONNECTED:
-      case SYSTEM_EVENT_ETH_GOT_IP: {
-        Log.trace("SYSTEM_EVENT_ETH_*");
-        break;
-      }
-      case SYSTEM_EVENT_MAX: {
-        Log.trace("SYSTEM_EVENT_MAX");
-        break;
-      }
-    }
-  };
-
-  auto scanNetworks = [](String expectedSSID) {
-    Log.trace("scanNetworks::begin");
-    auto ssidCount = -1;
-    while (ssidCount = WiFi.scanNetworks(), ssidCount==-1) {
-      Log.error("scanNetworks::couldn't get a wifi connection");
-    }
-
-    Log.trace("scanNetworks::network count, %i", ssidCount);
-
-    for (auto i = 0; i < ssidCount; i++) {
-      Log.trace("scanNetworks::found %s (%idBm) %s", WiFi.SSID(i).c_str(), WiFi.RSSI(i), ""/*WiFi.encryptionType(i)*/);
-      if (WiFi.SSID(i)==expectedSSID) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  WiFi.onEvent(handleEvents);
-  while (!scanNetworks(ssid) && !HACK_MODE) {
-    Log.error("unable to locate SSID %s", ssid);
-    delay(1000);
-  }
-
-  connectToWifi();
+  wifiManager.setDebugOutput(HACK_MODE);
+  wifiManager.setAPCallback(wifiManagerApCallback);
 }
 
+void setupDisplay() {
+  display.init();
+  display.flipScreenVertically();
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(0, 0, "Ventilator " + Version);
+  display.display();
+  line += LineHeight;
+  delay(3000);
+}
+/*
 void setupServo() {
   pinMode(ServoPin, OUTPUT);
-}
+}*/
 
 void setup() {
   preInitialize();
   setupDebugging();
   setupLogging();
-  setupFileSystem();
+  printBoardInfo();
   setupWiFi();
-  setupServo();
+  setupDisplay();
+  /*setupServo();
+ */
 
   Log.notice("Running...");
 
-  /*timeTimer = xTimerCreate("timeTimer",
-                           pdMS_TO_TICKS(30*1000),
-                           pdTRUE,
-                           (void *) 0,
-                           reinterpret_cast<TimerCallbackFunction_t>(syncTimeCallback));
+  digitalWrite(LED_BUILTIN, HIGH);
 
-
-  if (xTimerStart(timeTimer, 0)!=pdPASS) {
-    Log.error("Time timer failed.");
-  }*/
-
-  pinMode(LED_BUILTIN, OUTPUT);
-
-  Log.trace("MAC: %x", WiFi.macAddress().c_str());
-
-  wifiReconnectTimer = xTimerCreate("wifiTimer",
-                                    pdMS_TO_TICKS(1*1000),
-                                    pdFALSE,
-                                    (void *) 0,
-                                    reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
-
-  connectToWifi();
+  /*connectToWifi();*/
 }
 
-auto led_state = LOW;
+void initializeWiFi() {
+  if (!wifiManager.startConfigPortal(AccessPointSSID.c_str())) {
+    Log.error("failed to connect to ", AccessPointSSID.c_str());
+    delay(3000);
+    ESP.reset();
+    delay(5000);
+  }
+}
+
+
 void loop() {
-  led_state = !led_state;
 
-  digitalWrite(ServoPin, HIGH);
-  delay(led_state==HIGH ? 6000 : 6000);
-  digitalWrite(ServoPin, LOW);
-  delay(3000);
+  if (digitalRead(FlashPin)==LOW) {
+    Log.trace("initializing WiFi");
+    initializeWiFi();
+  }
 
-  digitalWrite(LED_BUILTIN, led_state);
+  const int potValue = analogRead(A0);
+  const int normailizedRate = map(potValue, 0, 1024, CycleLow, CycleHigh);
+  pout("Cycles " + String(normailizedRate) + "/min");
+
+  // handle breath in/out cycle at target rate/min
+  cycle_counter += 1;
+  if( (30*100)/normailizedRate < cycle_counter){
+    cycle_phase = (cycle_phase+1)%2;
+    cycle_counter = 0;
+    //Log.trace(loop_count/100.0);
+    //Log.trace("\tphase speed:");
+    if(cycle_phase == 0){
+      if(enable_motor) {
+        Log.trace("CONTROLLER ON");
+        digitalWrite(ControllerPin, HIGH);
+      }
+        //myservo.write(target_speed_high);
+      //Serial.println(target_speed_high);
+    } else {
+      if(enable_motor) {
+        digitalWrite(ControllerPin, LOW);
+      }
+        //myservo.write(target_speed_low);
+      //Serial.println(target_speed_low);
+    }
+  }
+
+  // for debugging breathing back pressure sensing
+//  current = analogRead(current_pin);
+//  Serial.print(current);
+//  Serial.print(",");
+//  Serial.println(digitalRead(button_pin));
+
+  loop_count += 1;
+  delay(10);  // approximately 100 cycles per second
 }
