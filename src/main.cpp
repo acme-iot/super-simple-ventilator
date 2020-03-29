@@ -2,103 +2,43 @@
 
 #include <ArduinoLog.h>
 #include <TimeLib.h>
-
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <DNSServer.h>
-#include <WiFiManager.h>
 #include "SSD1306Wire.h"
 
 #include <chrono>
 #include <ctime>
 #include <string>
-//#include <cassert>
-
-#ifndef CI_BUILD
-#include "secrets.h"
-#else
-#define SECRET_SSID "SSID"
-#define SECRET_PASSWORD "password1234"
-#define SECRET_MQTT_USERNAME ""
-#define SECRET_MQTT_PASSWORD ""
-#endif
 
 #ifdef RELEASE
 #define LOG_LEVEL LOG_LEVEL_SILENT
-#define HACK_MODE false
+#define DEBUG false
 #else
 #define LOG_LEVEL LOG_LEVEL_VERBOSE
-#define HACK_MODE true
+#define DEBUG true
 #endif
 
-//some variables to tweek
-#define version "20201603.1"
-//#define normailizedRate 16 // breathing cycles per minute
-#define enable_motor true // useful for debugging without noise
-
-#define max_speed 180
-#define min_speed 0
-#define PEEP_speed 40 //approx 5cm/H2O
-#define led_pin 13
-#define button_pin A5
-#define current_pin A0
-#define servo_pin 3
-#define serial_baud 9600
-
-int buttonState = 1;
-int buttonStatePrev = 1;
-int speed_state = 0;
-int click_loop_count = 0;
-int click_count = 0;
-
-int target_speed_high = 0;
-int target_speed_low = 0;
-
-int mode = 0;
-int current = 0;
-
 const String Version = "0.0.1";
-const String AccessPointSSID = "iot-ap";
 
 const uint8_t PotPin = A0;
 const uint8_t ControllerPin = D5;
 const uint8_t FlashPin = 0;
 
 const uint8_t CycleLow = 13;
-const uint8_t CycleHigh = 20;
+const uint8_t CycleHigh = 21;
+const uint8_t CycleDelayMs = 10;
 
 const int BaudRate = 115200;
-
-const char *ssid = SECRET_SSID;
-const char *password = SECRET_PASSWORD;
-
-const int LineHeight = 16;
+const uint8_t LineHeight = 16;
 
 SSD1306Wire display(0x3c, SDA, SCL);
 
-WiFiManager wifiManager;
-
-int loop_count = 0;
-int cycle_counter = 0;
-int cycle_phase = 0;
-
-int line = LineHeight;
+uint16_t cycleCount = 0;
+uint8_t currentCycle = 0;
+uint8_t cyclePhase = 0;
+uint8_t line = LineHeight;
 bool overwrite = false;
 
-/*void connectToWifi() {
-  Log.trace("connecting to Wi-Fi...");
-}
-
-void initializeBlower() {
-  Log.trace("initializing blower....");
-
-}
-*/
-
-//helper method for oLed
-//pout -> Print Out
 void pout(String msg) {
-  if (overwrite==true) {
+  if (overwrite) {
     display.setColor(BLACK);
     display.fillRect(0, line, 128, 64);
     display.setColor(WHITE);
@@ -111,22 +51,10 @@ void pout(String msg) {
     line += LineHeight;
   }
 
-  if (line>=LineHeight*3) {
+  if (line >= LineHeight*3) {
     overwrite = true;
-    line = LineHeight * 2;
+    line = LineHeight*2;
   }
-}
-
-void wifiManagerApCallback(WiFiManager *manager) {
-  const String ssid = manager->getConfigPortalSSID();
-  Log.trace("config mode: IP %s\nSSIF %s",
-            WiFi.softAPIP().toString().c_str(),
-            ssid.c_str()
-  );
-  pout("Connected to WiFi");
-  pout("  " + ssid);
-  //digitalWrite(LED_BUILTIN, LOW);
-  delay(2000);
 }
 
 void preInitialize() {
@@ -134,9 +62,6 @@ void preInitialize() {
   pinMode(FlashPin, INPUT);
   pinMode(PotPin, INPUT);
   pinMode(ControllerPin, OUTPUT);
-
-  // Quickly kill motor
-  digitalWrite(ControllerPin, LOW);
 
   Serial.begin(BaudRate);
   while (!Serial && !Serial.available()) {
@@ -175,11 +100,6 @@ void setupLogging() {
   Log.setSuffix([](Print *p) { p->print("\n"); });
 }
 
-void setupWiFi() {
-  wifiManager.setDebugOutput(HACK_MODE);
-  wifiManager.setAPCallback(wifiManagerApCallback);
-}
-
 void setupDisplay() {
   display.init();
   display.flipScreenVertically();
@@ -190,78 +110,59 @@ void setupDisplay() {
   line += LineHeight;
   delay(3000);
 }
-/*
-void setupServo() {
-  pinMode(ServoPin, OUTPUT);
-}*/
+
+void setupController() {
+  digitalWrite(ControllerPin, LOW);
+}
 
 void setup() {
   preInitialize();
   setupDebugging();
   setupLogging();
   printBoardInfo();
-  setupWiFi();
   setupDisplay();
-  /*setupServo();
- */
+  setupController();
 
   Log.notice("Running...");
 
   digitalWrite(LED_BUILTIN, HIGH);
-
-  /*connectToWifi();*/
 }
 
-void initializeWiFi() {
-  if (!wifiManager.startConfigPortal(AccessPointSSID.c_str())) {
-    Log.error("failed to connect to ", AccessPointSSID.c_str());
-    delay(3000);
-    ESP.reset();
-    delay(5000);
-  }
-}
-
-
+int breathIn = 0;
+int breathOut = 0;
 void loop() {
+  const uint16_t potValue = analogRead(A0);
+  const uint8_t normailizedRate = map(potValue, 0, 1024, CycleLow, CycleHigh);
 
-  if (digitalRead(FlashPin)==LOW) {
-    Log.trace("initializing WiFi");
-    initializeWiFi();
+  if (normailizedRate!=currentCycle) {
+    currentCycle = normailizedRate;
+    pout("Cycles " + String(currentCycle) + "/min");
   }
 
-  const int potValue = analogRead(A0);
-  const int normailizedRate = map(potValue, 0, 1024, CycleLow, CycleHigh);
-  pout("Cycles " + String(normailizedRate) + "/min");
+  cycleCount += 1;
+  if ((30*100)/currentCycle < cycleCount) {
+    cyclePhase = (cyclePhase + 1)%2;
+    cycleCount = 0;
 
-  // handle breath in/out cycle at target rate/min
-  cycle_counter += 1;
-  if( (30*100)/normailizedRate < cycle_counter){
-    cycle_phase = (cycle_phase+1)%2;
-    cycle_counter = 0;
-    //Log.trace(loop_count/100.0);
-    //Log.trace("\tphase speed:");
-    if(cycle_phase == 0){
-      if(enable_motor) {
-        Log.trace("CONTROLLER ON");
+    if (cyclePhase==0) {
+      if (DEBUG) {
+        Log.trace("Breath out %dms", breathOut);
+        breathIn = 0;
+      } else {
         digitalWrite(ControllerPin, HIGH);
       }
-        //myservo.write(target_speed_high);
-      //Serial.println(target_speed_high);
     } else {
-      if(enable_motor) {
+      if (DEBUG) {
+        Log.trace("Breath in %dms", breathIn);
+        breathOut = 0;
+      } else {
+        //todo, reverse airflow
         digitalWrite(ControllerPin, LOW);
       }
-        //myservo.write(target_speed_low);
-      //Serial.println(target_speed_low);
     }
   }
 
-  // for debugging breathing back pressure sensing
-//  current = analogRead(current_pin);
-//  Serial.print(current);
-//  Serial.print(",");
-//  Serial.println(digitalRead(button_pin));
-
-  loop_count += 1;
-  delay(10);  // approximately 100 cycles per second
+  breathIn += CycleDelayMs;
+  breathOut += CycleDelayMs;
+  delay(CycleDelayMs);  // approximately 100 cycles per second
 }
