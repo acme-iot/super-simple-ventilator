@@ -3,10 +3,38 @@
 This project is based on https://github.com/jcl5m1/ventilator. 
 This project has a basic/optional LED display and adjusts to a range of ventilation breathing cycles.
 
-### Shopping List
+## Shopping List
 
-#### optional
-- 3D printer ()
+##### Required
+
+- ESP8266 (any ESP8266 will do)
+  - [Amazon.ca](https://www.amazon.ca/gp/product/B07S5Z3VYZ/ref=ppx_od_dt_b_asin_title_s00?ie=UTF8&psc=1)
+
+- 12V air pump (make sure it is 12 volts and has a 2 amp AC power adapter)
+  - [Amazon.ca](https://www.amazon.ca/gp/product/B07GTGM5ZM/ref=ppx_yo_dt_b_asin_title_o07_s01?ie=UTF8&psc=1)
+  
+- PWM controller (can be substituted with a relay)
+  - [Amazon.ca](https://www.amazon.ca/gp/product/B07GBY5QYV/ref=ppx_yo_dt_b_asin_title_o07_s00?ie=UTF8&psc=1)
+
+- CPAP tube (6ft with a 15cm diameter)
+  - [Amazon.ca](https://www.amazon.ca/gp/product/B00DOCZOH0/ref=ppx_yo_dt_b_asin_title_o08_s00?ie=UTF8&psc=1)
+  
+- 3D printer for mouth piece
+  - https://github.com/jcl5m1/ventilator/blob/master/3dmodels/mouthgaurd_v20200316.2.stl      
+
+##### Optional
+
+- 3.7v LiPo battery (alternative, keep ESP8266 attached to powered USB)
+  - [Amazon.ca](https://www.amazon.ca/Adafruit-328-Battery-Lithium-Polymer/dp/B01NAX9XYG/ref=sr_1_118?keywords=lipo&qid=1585621276&s=electronics&sr=1-118)
+  
+-   
+3D printed display mount and case
+  - [ventilator-base-lid-current](https://www.tinkercad.com/things/79ZmoLmDgUC-ventilator-base-lid-current)
+  - [ventilator-base-components-current](https://www.tinkercad.com/things/aoOYSp1oOBV)
+  - [ventilator-base-battery-current](https://www.tinkercad.com/things/kpoBHQXRx0s)
+  - [ventilator-display-mount-current](https://www.tinkercad.com/things/bjjukMYUP6L)
+  
+
 
 ### ESP8266 Firmware
 Build and deploy firmware using PlatformIO.
