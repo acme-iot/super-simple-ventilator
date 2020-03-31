@@ -8,6 +8,8 @@
 #include <ctime>
 #include <string>
 
+#define RELEASE 0
+
 #ifdef RELEASE
 #define LOG_LEVEL LOG_LEVEL_SILENT
 #define DEBUG false

@@ -1,11 +1,18 @@
-[![Build Status](https://travis-ci.org/acme-iot/ventilator-firmware.svg)](https://travis-ci.org/acme-iot/ventilator-firmware)
+# Ventilator firmware, steps & shopping list
 
-# Ventilator firmware for ESP32 boards
+This project is based on https://github.com/jcl5m1/ventilator. 
+This project has a basic/optional LED display and adjusts to a range of ventilation breathing cycles.
 
-This project is based on https://github.com/jcl5m1/ventilator and will work with all the steps and hardware defined there. 
-This project will also expose a basic web application allowing changes to settings via http posts to the board vs. recompiling.
+### Shopping List
 
-## Pre steps
+#### optional
+- 3D printer ()
+
+### ESP8266 Firmware
+Build and deploy firmware using PlatformIO.
+
+*note, you can can find a partially completed ESP32 project in the master branch*
+### Pre steps
 
 #### Did you install PlatformIO's CLI?
 
