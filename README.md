@@ -27,7 +27,9 @@ This project has a basic/optional LED display and adjusts to a range of ventilat
 - 3.7v LiPo battery (alternative, keep ESP8266 attached to powered USB)
   - [Amazon.ca](https://www.amazon.ca/Adafruit-328-Battery-Lithium-Polymer/dp/B01NAX9XYG/ref=sr_1_118?keywords=lipo&qid=1585621276&s=electronics&sr=1-118)
   
--   
+- TP4056 LiPo charger module
+  - []()
+  
 3D printed display mount and case
   - [ventilator-base-lid-current](https://www.tinkercad.com/things/79ZmoLmDgUC-ventilator-base-lid-current)
   - [ventilator-base-components-current](https://www.tinkercad.com/things/aoOYSp1oOBV)
