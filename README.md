@@ -8,6 +8,7 @@ Ventilator cycles between a range of breathing cycles as shown on the display
 
 Quick circuit using a glue gun and Dupont connectors
 ![circuit 0.0.1](./resources/images/0.0.1-circuit.jpg)
+*MOSFET(left of red LED) is not regulating voltage and isn't generating heat*
 
 ## Shopping List
 
