@@ -1,7 +1,13 @@
 # Ventilator firmware, steps & shopping list
 
 This project is based on https://github.com/jcl5m1/ventilator. 
-This project has a basic/optional LED display and adjusts to a range of ventilation breathing cycles.
+Version 0.0.1 of this project has a basic/optional LED display and adjusts to a range of ventilation breathing cycles.
+
+Ventilator cycles between a range of breathing cycles as shown on the display
+![ventilator 0.0.1](./resources/images/0.0.1-ventilator.jpg)
+
+Quick circuit using a glue gun and Dupont connectors
+![circuit 0.0.1](./resources/images/0.0.1-circuit.jpg)
 
 ## Shopping List
 
@@ -37,8 +43,7 @@ This project has a basic/optional LED display and adjusts to a range of ventilat
   - [ventilator-display-mount-current](https://www.tinkercad.com/things/bjjukMYUP6L)
   
 
-
-### ESP8266 Firmware
+## ESP8266 Firmware
 Build and deploy firmware using PlatformIO.
 
 *note, you can can find a partially completed ESP32 project in the master branch*
