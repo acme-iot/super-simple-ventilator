@@ -27,6 +27,12 @@ Simple circuit without battery powered board
 - PWM controller (can be substituted with a relay)
   - [Amazon.ca](https://www.amazon.ca/gp/product/B07GBY5QYV/ref=ppx_yo_dt_b_asin_title_o07_s00?ie=UTF8&psc=1)
 
+- Potentiometer 10k
+  - [Amazon.ca](https://www.amazon.ca/Gikfun-Knurled-Linear-Potentiometer-Arduino/dp/B0146DJWFU)
+  
+- OLED Display
+  - [Amazon.ca](https://www.amazon.ca/Display-Module-SSD1306-Compatible-Arduino/dp/B07QW95L1B)
+  
 - CPAP tube (6ft with a 15cm diameter)
   - [Amazon.ca](https://www.amazon.ca/gp/product/B00DOCZOH0/ref=ppx_yo_dt_b_asin_title_o08_s00?ie=UTF8&psc=1)
   
