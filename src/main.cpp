@@ -8,7 +8,7 @@
 #include <ctime>
 #include <string>
 
-// #define RELEASE
+//#define RELEASE
 
 #ifdef RELEASE
 #define LOG_LEVEL LOG_LEVEL_SILENT
@@ -18,10 +18,11 @@
 #define DEBUG true
 #endif
 
-const String Version = "0.0.1";
+const String Version = "0.1.0";
 
 const uint8_t PotPin = A0;
-const uint8_t ControllerPin = D5;
+const uint8_t ControllerInhalePin = D5;
+const uint8_t ControllerExhalePin = D6;
 const uint8_t FlashPin = 0;
 
 const uint8_t CycleLow = 13;
@@ -63,7 +64,8 @@ void preInitialize() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(FlashPin, INPUT);
   pinMode(PotPin, INPUT);
-  pinMode(ControllerPin, OUTPUT);
+  pinMode(ControllerInhalePin, OUTPUT);
+  pinMode(ControllerExhalePin, OUTPUT);
 
   Serial.begin(BaudRate);
   while (!Serial && !Serial.available()) {
@@ -114,7 +116,8 @@ void setupDisplay() {
 }
 
 void setupController() {
-  digitalWrite(ControllerPin, LOW);
+  digitalWrite(ControllerInhalePin, LOW);
+  digitalWrite(ControllerExhalePin, LOW);
 }
 
 void setup() {
@@ -146,20 +149,21 @@ void loop() {
     cyclePhase = (cyclePhase + 1)%2;
     cycleCount = 0;
 
-    if (cyclePhase==0) {
+    if (cyclePhase) {
       if (DEBUG) {
         Log.trace("Breath out %dms", breathOut);
         breathIn = 0;
       } else {
-        digitalWrite(ControllerPin, HIGH);
+        digitalWrite(ControllerExhalePin, LOW);
+        digitalWrite(ControllerInhalePin, HIGH);
       }
     } else {
       if (DEBUG) {
         Log.trace("Breath in %dms", breathIn);
         breathOut = 0;
       } else {
-        //todo, reverse airflow
-        digitalWrite(ControllerPin, LOW);
+        digitalWrite(ControllerExhalePin, HIGH);
+        digitalWrite(ControllerInhalePin, LOW);
       }
     }
   }
