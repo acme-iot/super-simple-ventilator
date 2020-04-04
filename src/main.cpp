@@ -8,7 +8,7 @@
 #include <ctime>
 #include <string>
 
-//#define RELEASE
+#define RELEASE
 
 #ifdef RELEASE
 #define LOG_LEVEL LOG_LEVEL_SILENT
@@ -25,8 +25,8 @@ const uint8_t ControllerInhalePin = D5;
 const uint8_t ControllerExhalePin = D6;
 const uint8_t FlashPin = 0;
 
-const uint8_t CycleLow = 13;
-const uint8_t CycleHigh = 21;
+const uint8_t CycleLow = 10;
+const uint8_t CycleHigh = 30;
 const uint8_t CycleDelayMs = 10;
 
 const int BaudRate = 115200;
