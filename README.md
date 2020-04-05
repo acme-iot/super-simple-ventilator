@@ -12,7 +12,7 @@ This project is based on https://github.com/jcl5m1/ventilator.
   - display shows the cycles/min of the exhale phase
   - enables pump between exhale and inhale based on the phases' cycle setting
 
-#### Display & Adjustment
+## Display & Adjustment
 The display shows two things
 1. what `Mode` the ventilator is currently in; exhale or inhale.
 2. the cycles per minute for both modes
@@ -20,6 +20,10 @@ The display shows two things
 The annotations in this image; Potentiometer & Button are used to adjust the ventilator.
 The button will switch the mode between inhale or exhale, while turning the potentiometer will adjust the cycles for the active mode.
 ![ventilator display 0.1.1](./resources/images/0.1.1-display.jpg)
+
+### Display circuit
+![display circuit 0.1.0](./resources/images/0.1.0-controls.png)
+
 
 ## Shopping List
 
