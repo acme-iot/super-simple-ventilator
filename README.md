@@ -1,6 +1,65 @@
 # Ventilator firmware, steps & shopping list
 
 This project is based on https://github.com/jcl5m1/ventilator. 
+
+# Version 0.1.0
+### Changes from 0.0.1,
+- additional 12v pump for the exhale phase
+- controller for the exhale pump
+- button to switch between adjusting the exhale and inhale cycle
+- software changes,
+  - display shows the cycles/min of the inhale phase
+  - display shows the cycles/min of the exhale phase
+  - enables pump between exhale and inhale based on the phases' cycle setting
+
+#### Display & Adjustment
+The display shows two things
+1. what `Mode` the ventilator is currently in; exhale or inhale.
+2. the cycles per minute for both modes
+
+The annotations in this image; Potentiometer & Button are used to adjust the ventilator.
+The button will switch the mode between inhale or exhale, while turning the potentiometer will adjust the cycles for the active mode.
+![ventilator display 0.1.1](./resources/images/0.1.1-display.jpg)
+
+## Shopping List
+
+#### Required
+*Almost all of these can be swapped out with similar components.*
+
+- ESP8266 (any ESP8266 will do)
+  - [Amazon](https://www.amazon.com/HiLetgo-Internet-Development-Wireless-Micropython/dp/B081CSJV2V)
+
+- 12V air pump (make sure it is 12 volts and has a 2 amp AC power adapter) - Need 2
+  - [Amazon](https://www.amazon.com/Electric-Portable-Quick-Fill-Inflator-Inflatable/dp/B074NZY3SQ)
+  
+- MOSFET 12v controller (can be substituted with a relay) - Need 2
+  - [Amazon](https://www.amazon.com/HiLetgo-IRF520-MOSFET-Arduino-Raspberry/dp/B01I1J14MO)
+
+- Potentiometer 10k (can be substituted with lower resistances)
+  - [Amazon](https://www.amazon.com/Adafruit-Potentiometer-Breadboard-Friendly-ADA562/dp/B00NAY3O88)
+  
+- Button
+  - [Amazon](https://www.amazon.com/GZFY-6x6x4-5mm-Momentary-Tactile-Button/dp/B01N6GU7TA)
+    
+- OLED Display
+  - [Amazon](https://www.amazon.com/IZOKEE-Display-SSD1306-Raspberry-Yellow-Blue-IIC/dp/B076PDVFQD)
+  
+- CPAP tube (6ft with a 15cm diameter) - Need 2
+  - [Amazon](https://www.amazon.com/Premium-Universal-CPAP-Tubing-Hose/dp/B01N4RGZ80)
+  
+- 3D printer for mouth piece
+  - TODO   
+
+#### Optional
+
+- 3.7v LiPo battery, 800mAh or higher (alternative, keep ESP8266 attached to powered USB)
+  - [Amazon](https://www.amazon.com/dp/B07H6GDP95)
+  
+- TP4056 LiPo charger module
+  - [Amazon](https://www.amazon.com/dp/B01DRT4PWY)
+  
+
+# Version 0.0.1
 Version 0.0.1 of this project has a basic/optional LED display and adjusts to a range of ventilation breathing cycles.
 
 Ventilator cycles between a range of breathing cycles as shown on the display
